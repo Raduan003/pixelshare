@@ -1,0 +1,109 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "comment": "PixelShare – Logic App 2: Content Moderation",
+  "parameters": {
+    "logicAppName":             { "type": "string", "defaultValue": "pixelshare-content-moderation" },
+    "contentModeratorEndpoint": { "type": "string" },
+    "contentModeratorKey":      { "type": "securestring" },
+    "functionAppBaseUrl":       { "type": "string" }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2019-05-01",
+      "name": "[parameters('logicAppName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "triggers": {
+            "HTTP_Trigger_on_Upload": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mediaId":  { "type": "string" },
+                    "blobUrl":  { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "actions": {
+            "Submit_to_Content_Moderator": {
+              "type": "Http",
+              "inputs": {
+                "method": "POST",
+                "uri": "@{parameters('contentModeratorEndpoint')}/contentmoderator/moderate/v1.0/ProcessImage/Evaluate",
+                "headers": {
+                  "Ocp-Apim-Subscription-Key": "@parameters('contentModeratorKey')",
+                  "Content-Type": "application/json"
+                },
+                "body": { "DataRepresentation": "URL", "Value": "@{triggerBody()?['blobUrl']}" }
+              }
+            },
+            "Check_If_Inappropriate": {
+              "type": "If",
+              "runAfter": { "Submit_to_Content_Moderator": ["Succeeded"] },
+              "expression": {
+                "or": [
+                  { "equals": ["@body('Submit_to_Content_Moderator')?['IsImageAdultClassified']", true] },
+                  { "equals": ["@body('Submit_to_Content_Moderator')?['IsImageRacyClassified']", true] }
+                ]
+              },
+              "actions": {
+                "Flag_as_Rejected": {
+                  "type": "Http",
+                  "inputs": {
+                    "method": "PUT",
+                    "uri": "@{parameters('functionAppBaseUrl')}/api/UpdateMedia/@{triggerBody()?['mediaId']}",
+                    "headers": { "Content-Type": "application/json" },
+                    "body": { "moderationStatus": "rejected" }
+                  }
+                }
+              },
+              "else": {
+                "actions": {
+                  "Flag_as_Approved": {
+                    "type": "Http",
+                    "inputs": {
+                      "method": "PUT",
+                      "uri": "@{parameters('functionAppBaseUrl')}/api/UpdateMedia/@{triggerBody()?['mediaId']}",
+                      "headers": { "Content-Type": "application/json" },
+                      "body": { "moderationStatus": "approved" }
+                    }
+                  }
+                }
+              }
+            },
+            "Return_Moderation_Result": {
+              "type": "Response",
+              "runAfter": { "Check_If_Inappropriate": ["Succeeded"] },
+              "inputs": {
+                "statusCode": 200,
+                "body": {
+                  "mediaId": "@{triggerBody()?['mediaId']}",
+                  "moderationResult": "@body('Submit_to_Content_Moderator')"
+                }
+              }
+            }
+          },
+          "parameters": {
+            "contentModeratorEndpoint": { "type": "string" },
+            "contentModeratorKey":      { "type": "securestring" },
+            "functionAppBaseUrl":       { "type": "string" }
+          }
+        },
+        "parameters": {
+          "contentModeratorEndpoint": { "value": "[parameters('contentModeratorEndpoint')]" },
+          "contentModeratorKey":      { "value": "[parameters('contentModeratorKey')]" },
+          "functionAppBaseUrl":       { "value": "[parameters('functionAppBaseUrl')]" }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+azure-functions==1.21.3
+azure-storage-blob==12.19.1
+azure-cosmos==4.5.1
+azure-core==1.30.1

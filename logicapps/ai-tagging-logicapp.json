@@ -1,0 +1,95 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "comment": "PixelShare – Logic App 1: AI Vision Auto-Tagging",
+  "parameters": {
+    "logicAppName":        { "type": "string", "defaultValue": "pixelshare-ai-tagging" },
+    "storageAccountName":  { "type": "string" },
+    "cosmosAccountName":   { "type": "string" },
+    "computerVisionEndpoint": { "type": "string" },
+    "computerVisionKey":   { "type": "securestring" }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2019-05-01",
+      "name": "[parameters('logicAppName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "triggers": {
+            "When_a_blob_is_added_or_modified": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": { "connection": { "name": "@parameters('$connections')['azureblob']['connectionId']" } },
+                "method": "get",
+                "path": "/datasets/default/triggers/batch/onupdatedfile",
+                "queries": {
+                  "folderId": "JTJmbWVkaWEtdXBsb2Fkcw==",
+                  "maxFileCount": 10
+                }
+              },
+              "recurrence": { "frequency": "Minute", "interval": 1 }
+            }
+          },
+          "actions": {
+            "For_each_blob": {
+              "type": "Foreach",
+              "foreach": "@triggerBody()",
+              "actions": {
+                "Analyse_Image_with_AI_Vision": {
+                  "type": "Http",
+                  "inputs": {
+                    "method": "POST",
+                    "uri": "@{parameters('computerVisionEndpoint')}/vision/v3.2/analyze?visualFeatures=Tags,Description",
+                    "headers": {
+                      "Ocp-Apim-Subscription-Key": "@parameters('computerVisionKey')",
+                      "Content-Type": "application/json"
+                    },
+                    "body": {
+                      "url": "@{items('For_each_blob')?['Path']}"
+                    }
+                  }
+                },
+                "Extract_Tags": {
+                  "type": "Compose",
+                  "inputs": "@body('Analyse_Image_with_AI_Vision')?['tags']",
+                  "runAfter": { "Analyse_Image_with_AI_Vision": ["Succeeded"] }
+                },
+                "Update_Cosmos_DB_with_Tags": {
+                  "type": "Http",
+                  "runAfter": { "Extract_Tags": ["Succeeded"] },
+                  "inputs": {
+                    "method": "PATCH",
+                    "uri": "https://YOUR-FUNCTION-APP.azurewebsites.net/api/UpdateMedia/@{items('For_each_blob')?['Name']}",
+                    "headers": { "Content-Type": "application/json" },
+                    "body": {
+                      "tags": "@{outputs('Extract_Tags')}",
+                      "moderationStatus": "approved"
+                    }
+                  }
+                }
+              },
+              "runAfter": {}
+            }
+          }
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "azureblob": {
+                "connectionId": "[resourceId('Microsoft.Web/connections', 'azureblob')]",
+                "connectionName": "azureblob",
+                "id": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', resourceGroup().location, 'azureblob')]"
+              }
+            }
+          },
+          "computerVisionEndpoint": { "value": "[parameters('computerVisionEndpoint')]" },
+          "computerVisionKey":      { "value": "[parameters('computerVisionKey')]" }
+        }
+      }
+    }
+  ]
+}
