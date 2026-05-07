@@ -9,33 +9,19 @@ Student: Raduan Islam | B00974562
 
 ```
 pixelshare/
+├── index.html                  ← Frontend (GitHub Pages)
 ├── frontend/
-│   └── index.html              ← Static Web App (HTML/JS frontend)
+│   └── index.html              ← Frontend copy
 ├── functions/
+│   ├── function_app.py         ← All 5 CRUD Azure Functions
 │   ├── host.json               ← Function App config
-│   ├── requirements.txt        ← Python dependencies
-│   ├── local.settings.json     ← Local dev env vars (DO NOT COMMIT)
-│   ├── shared/
-│   │   └── config.py           ← Shared Azure clients
-│   ├── UploadMedia/
-│   │   └── __init__.py         ← POST  /api/UploadMedia
-│   ├── GetAllMedia/
-│   │   └── __init__.py         ← GET   /api/GetAllMedia
-│   ├── GetMediaById/
-│   │   └── __init__.py         ← GET   /api/GetMediaById/{id}
-│   ├── UpdateMedia/
-│   │   └── __init__.py         ← PUT   /api/UpdateMedia/{id}
-│   └── DeleteMedia/
-│       └── __init__.py         ← DELETE /api/DeleteMedia/{id}
+│   └── requirements.txt        ← Python dependencies
 ├── logicapps/
-│   ├── ai-tagging-logicapp.json          ← Logic App: AI Vision auto-tagging
-│   └── content-moderation-logicapp.json  ← Logic App: Content Moderator
-├── docs/
-│   ├── AZURE-SETUP-GUIDE.md    ← Step-by-step Azure setup
-│   └── azure-sql-schema.sql    ← Azure SQL Users table
+│   ├── ai-tagging-logicapp.json
+│   └── content-moderation-logicapp.json
 └── .github/
     └── workflows/
-        └── deploy.yml          ← CI/CD: GitHub Actions → Static Web App
+        └── deploy.yml          ← CI/CD GitHub Actions
 ```
 
 ## Azure Resources Used
@@ -64,5 +50,4 @@ pixelshare/
 | PUT | /api/UpdateMedia/{id} | Update title/tags |
 | DELETE | /api/DeleteMedia/{id} | Delete media + blob |
 
-## Setup
-See `docs/AZURE-SETUP-GUIDE.md` for full step-by-step instructions.
+
