@@ -4,7 +4,7 @@ import uuid
 import json
 import os
 from datetime import datetime, timezone
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.cosmos import CosmosClient
 
 # ── App ────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ def UploadMedia(req: func.HttpRequest) -> func.HttpResponse:
         blob_client = get_blob_service_client().get_blob_client(
             container=BLOB_CONTAINER_NAME, blob=blob_name
         )
-        blob_client.upload_blob(file_bytes, content_settings={"content_type": content_type})
+        blob_client.upload_blob(file_bytes, content_settings=ContentSettings(content_type=content_type))
         blob_url = blob_client.url
 
         document = {
