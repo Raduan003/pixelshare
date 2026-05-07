@@ -1,5 +1,4 @@
 -- PixelShare – Azure SQL Schema
--- Run this in Azure SQL Query Editor after creating your database
 
 CREATE TABLE Users (
     userId      VARCHAR(50)  PRIMARY KEY DEFAULT NEWID(),
@@ -22,7 +21,4 @@ CREATE TABLE MediaAuditLog (
 INSERT INTO Users (email, displayName)
 VALUES ('raduan@pixelshare.com', 'Raduan Islam');
 
--- View all users
--- SELECT * FROM Users;
--- View audit log
--- SELECT * FROM MediaAuditLog ORDER BY actionAt DESC;
+
